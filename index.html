@@ -7,18 +7,32 @@
   <title>VAAX 공지</title>
   <meta name="description" content="오늘의 커뮤니티 공지입니다." />
 
-  <!-- 카톡 미리보기(OG) 기본 태그 -->
+  <!-- 카톡 미리보기(OG) -->
   <meta property="og:title" content="VAAX 오늘의 공지" />
   <meta property="og:description" content="핵심 소식 1문장 요약" />
   <meta property="og:image" content="og-image.jpg" />
   <meta property="og:url" content="https://YOURNAME.github.io/my-notice/" />
 
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Apple SD Gothic Neo,Malgun Gothic,sans-serif; margin:0; padding:24px; line-height:1.5; font-size:18px;}
-    .card{max-width:680px; margin:0 auto; border:1px solid #eee; border-radius:16px; padding:20px; box-shadow:0 2px 10px rgba(0,0,0,.05);}
+    :root { --maxw: 680px; }
+    body{
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+      margin:0; padding:24px; line-height:1.5; font-size:18px; background:#fafafa;
+    }
+    .card{
+      max-width:var(--maxw); margin:0 auto 16px; border:1px solid #eee; border-radius:16px;
+      padding:20px; box-shadow:0 2px 10px rgba(0,0,0,.05); background:#fff;
+    }
     h1{font-size:24px; margin:0 0 8px;}
     p{margin:8px 0;}
     .btn{display:block; text-align:center; padding:14px 16px; border-radius:12px; text-decoration:none; border:1px solid #ddd;}
+    /* iframe 섹션 */
+    .embed{max-width:var(--maxw); margin:0 auto;}
+    .frame{
+      width:100%; height:80vh; border:0; border-radius:12px; background:#fff;
+    }
+    .fallback{font-size:14px; color:#666; text-align:right; margin:6px 4px 0;}
+    .fallback a{color:#333;}
   </style>
 </head>
 <body>
@@ -27,5 +41,20 @@
     <p>• 20시 정각 라이브 시작<br/>• 참여코드: VAAX123</p>
     <a class="btn" href="https://open.kakao.com/o/xxxx">참여 링크 열기</a>
   </div>
+
+  <!-- 여기가 추가된 iframe 영역 -->
+  <section class="embed">
+    <iframe
+      class="frame"
+      src="https://sites.google.com/view/vaax-kr/home/daily-news/20250828"
+      loading="lazy"
+      referrerpolicy="no-referrer-when-downgrade"
+      allow="fullscreen"
+      title="VAAX Daily News 2025-08-28"></iframe>
+    <div class="fallback">
+      화면이 보이지 않으면
+      <a href="https://sites.google.com/view/vaax-kr/home/daily-news/20250828" target="_blank" rel="noopener">새 창에서 열기</a>
+    </div>
+  </section>
 </body>
 </html>
