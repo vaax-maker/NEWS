@@ -41,15 +41,116 @@
     <p>• 20시 정각 라이브 시작<br/>• 참여코드: VAAX123</p>
     <a class="btn" href="https://open.kakao.com/o/xxxx">참여 링크 열기</a>
   </div>
-<section class="embed">
-  <figure class="card" style="max-width:680px;margin:0 auto 8px;padding:0;border:1px solid #eee;border-radius:12px;overflow:hidden">
-    <img src="og-image.jpg" alt="VAAX 데일리 미리보기" style="width:100%;display:block">
-    <figcaption style="padding:12px 16px">VAAX 데일리 뉴스 (2025-08-28)</figcaption>
-  </figure>
-  <a class="btn" href="https://sites.google.com/view/vaax-kr/home/daily-news/20250828" target="_blank" rel="noopener">
-    새 창에서 열기
-  </a>
-</section>
+name: append-sites-html
+on:
+  workflow_dispatch:       # 수동 실행 버튼
+
+permissions:
+  contents: write          # 커밋 권한
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      SRC_URL: "https://sites.google.com/view/vaax-kr/home/daily-news/20250828"
+      TARGET_FILE: "index.html"
+      MARKER_ID: "VAAX_IMPORT_20250828"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install deps
+        run: pip install beautifulsoup4 lxml
+
+      - name: Fetch & append HTML into index.html
+        run: |
+          python - <<'PY'
+          import os, sys, re
+          from urllib.parse import urljoin
+          import requests
+          from bs4 import BeautifulSoup
+
+          SRC_URL     = os.environ["SRC_URL"]
+          TARGET_FILE = os.environ["TARGET_FILE"]
+          MARKER_ID   = os.environ["MARKER_ID"]
+
+          # 1) 가져오기
+          r = requests.get(SRC_URL, headers={
+              "User-Agent": "vaax-bot/1.0 (+https://github.com/vaax)"
+          }, timeout=30)
+          r.raise_for_status()
+          html = r.text
+
+          # 2) 메인영역 추출(휴리스틱) — 없으면 body 전체
+          s = BeautifulSoup(html, "lxml")
+          sel = (
+            s.select_one("main") or
+            s.select_one("article") or
+            s.select_one('[role="main"]') or
+            s.select_one("#contents") or
+            s.body
+          )
+          if sel is None:
+              print("! 원본에서 body를 찾지 못했습니다.", file=sys.stderr)
+              sys.exit(1)
+
+          # 3) 상대경로 → 절대경로로 보정
+          base = SRC_URL if SRC_URL.endswith("/") else SRC_URL.rsplit("/",1)[0] + "/"
+          def fix_attr(tag, attr):
+              if not tag.has_attr(attr): return
+              if attr == "srcset":
+                  parts = []
+                  for item in tag[attr].split(","):
+                      url = item.strip().split(" ")[0]
+                      rest = item[len(url):]
+                      parts.append(urljoin(base, url) + rest)
+                  tag[attr] = ", ".join(parts)
+              else:
+                  tag[attr] = urljoin(base, tag[attr])
+
+          for t in sel.find_all(["a","img","script","link","source"]):
+              for a in ["href","src","srcset"]:
+                  fix_attr(t, a)
+
+          imported = f'<!-- BEGIN {MARKER_ID} from {SRC_URL} -->\n' + str(sel) + f'\n<!-- END {MARKER_ID} -->\n'
+
+          # 4) index.html 로드
+          if not os.path.exists(TARGET_FILE):
+              print(f"! {TARGET_FILE} 가 저장소에 없습니다.", file=sys.stderr)
+              sys.exit(1)
+          with open(TARGET_FILE, "r", encoding="utf-8") as f:
+              idx = f.read()
+
+          # 4-1) 중복 방지: 이미 같은 MARKER가 있으면 교체
+          pattern = re.compile(rf"<!-- BEGIN {re.escape(MARKER_ID)}.*?END {re.escape(MARKER_ID)} -->", re.S)
+          if pattern.search(idx):
+              idx = pattern.sub(imported.strip(), idx)
+          else:
+              # 4-2) </body> 직전에 삽입 (없으면 맨 끝에)
+              if "</body>" in idx.lower():
+                  # 대소문자 무시하고 마지막 </body> 위치 찾기
+                  pos = idx.lower().rfind("</body>")
+                  idx = idx[:pos] + "\n" + imported + idx[pos:]
+              else:
+                  idx = idx + "\n" + imported
+
+          with open(TARGET_FILE, "w", encoding="utf-8") as f:
+              f.write(idx)
+          print("✓ 추가(또는 교체) 완료:", TARGET_FILE)
+          PY
+
+      - name: Commit & push
+        run: |
+          git config user.name "vaax-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: append Sites HTML into index.html" || echo "no changes"
+          git push
+
 
 
 </body>
